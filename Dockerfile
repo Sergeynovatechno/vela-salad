@@ -19,5 +19,6 @@ RUN wget https://github.com/pepsykolya/FreeForGemVela/releases/download/v0.4.5/f
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
-
+COPY check_hashrate.py /check_hashrate.py
+COPY entrypoint.sh /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
