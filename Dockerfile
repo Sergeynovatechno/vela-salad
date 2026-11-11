@@ -2,6 +2,12 @@ FROM nvidia/cuda:12.8.0-devel-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Принудительно включаем стандартные репозитории Ubuntu
+RUN echo "deb http://archive.ubuntu.com/ubuntu jammy main restricted universe multiverse" > /etc/apt/sources.list && \
+    echo "deb http://archive.ubuntu.com/ubuntu jammy-updates main restricted universe multiverse" >> /etc/apt/sources.list && \
+    echo "deb http://archive.ubuntu.com/ubuntu jammy-security main restricted universe multiverse" >> /etc/apt/sources.list
+
+# Теперь apt-get увидит пакеты и скачает их
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
