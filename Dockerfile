@@ -1,24 +1,18 @@
-FROM nvidia/cuda:12.8.0-runtime-ubuntu22.04
+FROM nvidia/cuda:12.8.0-devel-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# 1. Удаляем сломанные репозитории NVIDIA
-RUN rm -f /etc/apt/sources.list.d/cuda.list /etc/apt/sources.list.d/nvidia-ml.list
-
-# 2. Жестко прописываем стандартные сервера Ubuntu
-RUN echo "deb http://archive.ubuntu.com/ubuntu jammy main restricted universe multiverse" > /etc/apt/sources.list && \
-    echo "deb http://archive.ubuntu.com/ubuntu jammy-updates main restricted universe multiverse" >> /etc/apt/sources.list && \
-    echo "deb http://archive.ubuntu.com/ubuntu jammy-security main restricted universe multiverse" >> /etc/apt/sources.list
-
-# 3. Обновляемся и ставим всё нужное
-RUN apt-get update -o Acquire::http::Timeout=15 -o Acquire::Retries=5 && \
-    apt-get install -y --no-install-recommends \
-    wget python3 python3-pip git libgl1 libglib2.0-0 && \
-    rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    git \
+    wget \
+    libgl1 \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /root
 
-# 4. Скачиваем майнер
 RUN wget https://github.com/pepsykolya/FreeForGemVela/releases/download/v0.4.5/ffgv-hive-0.4.5.tar.gz && \
     tar -xvf ffgv-hive-0.4.5.tar.gz && \
     cd ffgv-hive && \
