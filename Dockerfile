@@ -2,13 +2,15 @@ FROM nvidia/cuda:12.8.0-devel-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# 1. Принудительно фиксируем стандартные надежные зеркала Ubuntu
-RUN rm -rf /etc/apt/sources.list.d/* && \
-    echo "deb http://archive.ubuntu.com/ubuntu jammy main restricted universe multiverse" > /etc/apt/sources.list && \
-    echo "deb http://archive.ubuntu.com/ubuntu jammy-updates main restricted universe multiverse" >> /etc/apt/sources.list && \
-    echo "deb http://archive.ubuntu.com/ubuntu jammy-security main restricted universe multiverse" >> /etc/apt/sources.list
+# 1. Удаляем старые сломанные списки репозиториев NVIDIA
+RUN rm -f /etc/apt/sources.list.d/cuda.list /etc/apt/sources.list.d/nvidia-ml.list
 
-# 2. Устанавливаем пакеты с таймаутами и повторами
+# 2. Скачиваем и устанавливаем новый ключ безопасности NVIDIA для Ubuntu 22.04
+RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.0-1_all.deb && \
+    dpkg -i cuda-keyring_1.0-1_all.deb && \
+    rm cuda-keyring_1.0-1_all.deb
+
+# 3. Теперь apt-get update пройдет успешно, и мы ставим пакеты
 RUN apt-get update -o Acquire::Retries=5 && \
     apt-get install -y --no-install-recommends \
     python3 \
@@ -21,17 +23,17 @@ RUN apt-get update -o Acquire::Retries=5 && \
 
 WORKDIR /root
 
-# 3. Скачиваем самую актуальную версию майнера FreeForGemVela (0.4.5)
+# 4. Качаем актуальную версию майнера FreeForGemVela (0.4.5)
 RUN wget https://github.com/pepsykolya/FreeForGemVela/releases/download/v0.4.5/ffgv-hive-0.4.5.tar.gz && \
     tar -xvf ffgv-hive-0.4.5.tar.gz && \
     cd ffgv-hive && \
     chmod +x ffgv
 
-# 4. Копируем скрипты запуска и стража ваттметра
+# 5. Копируем скрипты запуска и стража ваттметра
 COPY entrypoint.sh /entrypoint.sh
 COPY check_hashrate.py /check_hashrate.py
 
-# 5. Исправляем окончания строк и выдаем права на запуск
+# 6. Исправляем окончания строк и выдаем права на запуск
 RUN sed -i 's/\r$//' /entrypoint.sh && \
     sed -i 's/\r$//' /check_hashrate.py && \
     chmod +x /entrypoint.sh
