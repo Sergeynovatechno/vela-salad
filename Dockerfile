@@ -2,7 +2,9 @@ FROM nvidia/cuda:12.8.0-runtime-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y \
+# Добавляем флаг --fix-missing и повторные попытки при сбоях сети
+RUN apt-get update --fix-missing || (sleep 5 && apt-get update --fix-missing) && \
+    apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
     git \
@@ -21,7 +23,6 @@ RUN wget https://github.com/pepsykolya/FreeForGemVela/releases/download/v0.4.5/f
 COPY entrypoint.sh /entrypoint.sh
 COPY check_hashrate.py /check_hashrate.py
 
-# Удаляем невидимые символы Windows из скриптов
 RUN sed -i 's/\r$//' /entrypoint.sh
 RUN sed -i 's/\r$//' /check_hashrate.py
 RUN chmod +x /entrypoint.sh
