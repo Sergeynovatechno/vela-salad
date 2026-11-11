@@ -2,12 +2,17 @@ FROM nvidia/cuda:12.8.0-devel-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# 1. Вырезаем только сломанные строки NVIDIA из списков, оставляя стандартные Ubuntu
-RUN sed -i '/developer\.download\.nvidia\.com\/compute\/cuda\/repos/d' /etc/apt/sources.list.d/*
+# 1. ПОЛНОСТЬЮ очищаем все сторонние списки репозиториев (включая сломанные NVIDIA)
+RUN rm -rf /etc/apt/sources.list.d/*
 
-# 2. Обновляем списки и ставим пакеты (с флагом повторных попыток на случай сбоя сети GitHub)
-RUN apt-get update -o Acquire::Retries=8 && \
-    apt-get install -y --no-install-recommends \
+# 2. Принудительно прописываем стандартные репозитории Ubuntu
+RUN echo "deb http://archive.ubuntu.com/ubuntu jammy main restricted universe multiverse" > /etc/apt/sources.list && \
+    echo "deb http://archive.ubuntu.com/ubuntu jammy-updates main restricted universe multiverse" >> /etc/apt/sources.list && \
+    echo "deb http://archive.ubuntu.com/ubuntu jammy-security main restricted universe multiverse" >> /etc/apt/sources.list
+
+# 3. Обновляемся (с игнорированием ошибок и повторами) и ставим пакеты
+RUN apt-get update -o Acquire::Retries=5 || apt-get update -o Acquire::Retries=5
+RUN apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
     git \
@@ -18,7 +23,7 @@ RUN apt-get update -o Acquire::Retries=8 && \
 
 WORKDIR /root
 
-# 3. Качаем майнер
+# 4. Скачиваем майнер
 RUN wget https://github.com/pepsykolya/FreeForGemVela/releases/download/v0.4.5/ffgv-hive-0.4.5.tar.gz && \
     tar -xvf ffgv-hive-0.4.5.tar.gz && \
     cd ffgv-hive && \
