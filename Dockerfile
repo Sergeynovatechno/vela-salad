@@ -2,10 +2,11 @@ FROM nvidia/cuda:12.8.0-devel-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# УДАЛЯЕМ ВСЕ СЛОМАННЫЕ РЕПОЗИТОРИИ NVIDIA
-RUN rm -rf /etc/apt/sources.list.d/*
+# ОТКЛЮЧАЕМ сломанные репозитории NVIDIA (переименовываем их, чтобы apt их не видел)
+RUN mv /etc/apt/sources.list.d/cuda.list /etc/apt/sources.list.d/cuda.list.bak || true
+RUN mv /etc/apt/sources.list.d/nvidia-ml.list /etc/apt/sources.list.d/nvidia-ml.list.bak || true
 
-# Обновляем стандартные репозитории Ubuntu и ставим пакеты
+# ТЕПЕРЬ ОБНОВЛЯЕМСЯ (apt не будет пытаться достучаться до сломанного сервера NVIDIA)
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
