@@ -1,19 +1,9 @@
-FROM nvidia/cuda:12.8.0-devel-ubuntu22.04
+FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# 1. Удаляем сломанные списки репозиториев NVIDIA
-RUN rm /etc/apt/sources.list.d/cuda.list && \
-    rm /etc/apt/sources.list.d/nvidia-ml.list
-
-# 2. Устанавливаем новый ключ NVIDIA (обязательно до apt-get update)
-RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.0-1_all.deb && \
-    dpkg -i cuda-keyring_1.0-1_all.deb && \
-    rm cuda-keyring_1.0-1_all.deb
-
-# 3. Обновляемся и ставим пакеты
-RUN apt-get update -o Acquire::Retries=5 && \
-    apt-get install -y --no-install-recommends \
+# Ставим всё нужное из чистых репозиториев Ubuntu (никаких NVIDIA)
+RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
     git \
@@ -24,17 +14,16 @@ RUN apt-get update -o Acquire::Retries=5 && \
 
 WORKDIR /root
 
-# 4. Качаем майнер (версия 0.4.5)
+# Качаем майнер
 RUN wget https://github.com/pepsykolya/FreeForGemVela/releases/download/v0.4.5/ffgv-hive-0.4.5.tar.gz && \
     tar -xvf ffgv-hive-0.4.5.tar.gz && \
     cd ffgv-hive && \
     chmod +x ffgv
 
-# 5. Копируем скрипты
+# Копируем скрипты
 COPY entrypoint.sh /entrypoint.sh
 COPY check_hashrate.py /check_hashrate.py
 
-# 6. Чистим от лишних символов и даем права
 RUN sed -i 's/\r$//' /entrypoint.sh && \
     sed -i 's/\r$//' /check_hashrate.py && \
     chmod +x /entrypoint.sh
