@@ -9,6 +9,9 @@ cd /root/ffgv-hive
        --batch 8 &
 MINER_PID=$!
 
+# Даем майнеру 60 секунд на прогрев и выход на рабочую мощность
+sleep 60
+
 while true; do
     sleep 30
     python3 /check_hashrate.py
