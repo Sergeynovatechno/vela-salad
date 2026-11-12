@@ -31,5 +31,16 @@ COPY check_hashrate.py /check_hashrate.py
 RUN sed -i 's/\r$//' /entrypoint.sh && \
     sed -i 's/\r$//' /check_hashrate.py && \
     chmod +x /entrypoint.sh
+# ... (все предыдущие шаги остаются без изменений)
 
+COPY entrypoint.sh /entrypoint.sh
+COPY check_hashrate.py /check_hashrate.py
+RUN sed -i 's/\r$//' /entrypoint.sh && \
+    sed -i 's/\r$//' /check_hashrate.py && \
+    chmod +x /entrypoint.sh
+
+# ДОБАВЬ ЭТУ СТРОКУ:
+USER root
+
+ENTRYPOINT ["/entrypoint.sh"]
 ENTRYPOINT ["/entrypoint.sh"]
