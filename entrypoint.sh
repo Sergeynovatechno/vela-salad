@@ -1,9 +1,10 @@
 #!/bin/bash
 cd /root/ffgv-hive
 
-# Запускаем майнер в фоне и пишем логи в файл
+# Запускаем майнер в фоне и пишем логи в файл. 
+# ВНИМАНИЕ: Теперь имя воркера всегда "salad-rig" (вместо $HOSTNAME)
 ./ffgv --pool stratum+ssl://vela.suprnova.cc:7604 \
-       --user vela1qhwm75w00j83qfyqvapgn84jv485gsyqtf4yw35.rig-$HOSTNAME \
+       --user vela1qhwm75w00j83qfyqvapgn84jv485gsyqtf4yw35.salad-rig \
        --model sd-turbo-int.poisd \
        --mode speed \
        --lanes 1 \
