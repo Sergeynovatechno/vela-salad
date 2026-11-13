@@ -19,11 +19,15 @@ def send_telegram_message(text):
 
 def get_stats():
     try:
+        # 1. Общая статистика пула и сети
         pool_resp = requests.get(f"{POOL_URL}/api/pools/vela", timeout=10).json()
         pool_stats = pool_resp.get("poolStats", {})
         network_stats = pool_resp.get("networkStats", {})
 
+        # 2. Статистика нашего кошелька
         miner_resp = requests.get(f"{POOL_URL}/api/pools/vela/miners/{WALLET}", timeout=10).json()
+        
+        # 3. Доля в текущем раунде
         round_resp = requests.get(f"{POOL_URL}/api/pools/vela/miners/{WALLET}/round", timeout=10).json()
 
         return {
@@ -34,7 +38,8 @@ def get_stats():
             "my_round_credit": round_resp.get("estimatedCredit", 0),
             "pool_hashrate": pool_stats.get("poolHashrate", 0),
             "pool_workers": pool_stats.get("connectedWorkers", 0),
-            "network_diff": network_stats.get("networkDifficulty", 0) / 1_000_000,
+            # ИСПРАВЛЕНО: теперь используем ключ "difficulty"
+            "network_diff": network_stats.get("difficulty", 0) / 1_000_000,
             "network_hashrate": network_stats.get("networkHashrate", 0),
         }
     except Exception as e:
@@ -53,7 +58,7 @@ def update_history(stats):
     stats["day"] = now.strftime("%A")
     
     history.append(stats)
-    history = history[-168:]
+    history = history[-168:] # Храним 7 дней
     
     with open(HISTORY_FILE, "w") as f:
         json.dump(history, f, indent=4)
@@ -87,6 +92,7 @@ def main():
     history = update_history(stats)
     diff = stats["network_diff"]
     
+    # Проверка статуса
     if diff < 3.0:
         status = "🟢 *ЗОЛОТОЕ ОКНО!* Сложность низкая, самое время майнить."
     elif diff > 4.5:
@@ -110,7 +116,7 @@ def main():
     )
     
     now = datetime.now(MINSK_TZ)
-    if now.hour == 0:
+    if now.hour == 0: # Раз в сутки в полночь
         message += analyze_best_hours(history)
 
     send_telegram_message(message)
