@@ -1,7 +1,6 @@
 #!/bin/bash
 cd /root/ffgv-hive
 
-# batch 10 на СТАРОЙ версии 0.4.5
 ./ffgv --pool stratum+ssl://vela.suprnova.cc:7604 \
        --user vela1qhwm75w00j83qfyqvapgn84jv485gsyqtf4yw35.salad-rig \
        --model sd-turbo-int.poisd \
