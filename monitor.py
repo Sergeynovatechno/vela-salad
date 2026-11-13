@@ -19,27 +19,34 @@ def send_telegram_message(text):
 
 def get_stats():
     try:
-        # 1. Общая статистика пула и сети
+        # 1. Общая статистика пула и сети (Данные лежат внутри блока "pool")
         pool_resp = requests.get(f"{POOL_URL}/api/pools/vela", timeout=10).json()
-        pool_stats = pool_resp.get("poolStats", {})
-        network_stats = pool_resp.get("networkStats", {})
+        pool_block = pool_resp.get("pool", {})
+        pool_stats = pool_block.get("poolStats", {})
+        network_stats = pool_block.get("networkStats", {})
 
-        # 2. Статистика нашего кошелька
+        # 2. Статистика кошелька (Данные лежат в корне ответа)
         miner_resp = requests.get(f"{POOL_URL}/api/pools/vela/miners/{WALLET}", timeout=10).json()
         
-        # 3. Доля в текущем раунде
+        # Считаем суммарный хешрейт по всем воркерам
+        total_hashrate = 0
+        workers_data = miner_resp.get("performance", {}).get("workers", {})
+        if workers_data:
+            total_hashrate = sum(w.get("hashrate", 0) for w in workers_data.values())
+
+        # 3. Данные текущего раунда
         round_resp = requests.get(f"{POOL_URL}/api/pools/vela/miners/{WALLET}/round", timeout=10).json()
 
         return {
-            "my_hashrate": miner_resp.get("hashrate", 0),
-            "my_workers": miner_resp.get("workers", 0),
-            "my_balance": miner_resp.get("balance", 0),
+            "my_hashrate": total_hashrate,
+            "my_workers": len(workers_data),
+            "my_balance": miner_resp.get("totalBalance", 0), 
+            "my_unconfirmed": miner_resp.get("unconfirmedBalance", 0),
             "my_round_share": round_resp.get("share", 0),
             "my_round_credit": round_resp.get("estimatedCredit", 0),
             "pool_hashrate": pool_stats.get("poolHashrate", 0),
             "pool_workers": pool_stats.get("connectedWorkers", 0),
-            # ИСПРАВЛЕНО: теперь используем ключ "difficulty"
-            "network_diff": network_stats.get("difficulty", 0) / 1_000_000,
+            "network_diff": float(network_stats.get("networkDifficulty", 0)) / 1_000_000,
             "network_hashrate": network_stats.get("networkHashrate", 0),
         }
     except Exception as e:
@@ -58,7 +65,7 @@ def update_history(stats):
     stats["day"] = now.strftime("%A")
     
     history.append(stats)
-    history = history[-168:] # Храним 7 дней
+    history = history[-168:]
     
     with open(HISTORY_FILE, "w") as f:
         json.dump(history, f, indent=4)
@@ -92,7 +99,6 @@ def main():
     history = update_history(stats)
     diff = stats["network_diff"]
     
-    # Проверка статуса
     if diff < 3.0:
         status = "🟢 *ЗОЛОТОЕ ОКНО!* Сложность низкая, самое время майнить."
     elif diff > 4.5:
@@ -106,6 +112,7 @@ def main():
         f"⛏️ Хешрейт: {stats['my_hashrate']:.1f} inf/s\n"
         f"🖥️ Воркеров: {stats['my_workers']}\n"
         f"💰 Баланс: {stats['my_balance']:.4f} VELA\n"
+        f"⏳ В процессе: {stats['my_unconfirmed']:.4f} VELA\n"
         f"🎯 Доля в раунде: {stats['my_round_share']*100:.2f}%\n"
         f"💎 Награда за блок: {stats['my_round_credit']:.4f} VELA\n\n"
         f"🌐 *Пул и Сеть:*\n"
@@ -116,7 +123,7 @@ def main():
     )
     
     now = datetime.now(MINSK_TZ)
-    if now.hour == 0: # Раз в сутки в полночь
+    if now.hour == 0:
         message += analyze_best_hours(history)
 
     send_telegram_message(message)
