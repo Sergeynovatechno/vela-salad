@@ -6,16 +6,13 @@ import re
 LOG_FILE = "/root/miner.log"
 
 try:
-    # --- ПРОВЕРКА 1: ПОТРЕБЛЕНИЕ ---
     result = subprocess.check_output(["nvidia-smi", "--query-gpu=power.draw", "--format=csv,noheader,nounits"], encoding="utf-8").strip()
     power_draw = float(result.split('\n')[0])
     
-    # Повышаем порог до 150 Вт
     if power_draw < 150:
         print(f"CHECK FAILED: Low power draw ({power_draw}W < 150W).")
         sys.exit(1)
 
-    # --- ПРОВЕРКА 2: ХЕШРЕЙТ ---
     if not os.path.exists(LOG_FILE):
         print("CHECK FAILED: Log file not found yet.")
         sys.exit(1)
@@ -30,7 +27,6 @@ try:
             hashrate = float(match.group(1))
             break
 
-    # Повышаем порог до 26 inf/s
     if hashrate > 0 and hashrate < 26.0:
          print(f"CHECK FAILED: Hashrate dropped to {hashrate} inf/s (< 26).")
          sys.exit(1)
