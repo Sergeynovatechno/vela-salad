@@ -16,16 +16,19 @@ RUN apt-get update -o Acquire::Retries=5 && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /root
-# Скачиваем 0.4.6
+
 RUN wget https://github.com/pepsykolya/FreeForGemVela/releases/download/v0.4.6/ffgv-hive-0.4.6.tar.gz && \
     tar -xvf ffgv-hive-0.4.6.tar.gz && \
     cd ffgv-hive && chmod +x ffgv
 
 COPY entrypoint.sh /entrypoint.sh
 COPY check_hashrate.py /check_hashrate.py
+
 RUN sed -i 's/\r$//' /entrypoint.sh && \
     sed -i 's/\r$//' /check_hashrate.py && \
-    chmod +x /entrypoint.sh
+    chmod +x /entrypoint.sh /check_hashrate.py
 
 USER root
-ENTRYPOINT ["/entrypoint.sh"]
+
+# Запускаем через bash, чтобы обойти ошибку формата
+ENTRYPOINT ["/bin/bash", "/entrypoint.sh"]
