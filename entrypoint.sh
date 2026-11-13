@@ -1,45 +1,31 @@
-#!/bin/bash
-cd /root/ffgv-hive
+FROM nvidia/cuda:12.8.0-runtime-ubuntu22.04
+ENV DEBIAN_FRONTEND=noninteractive
+ENV AUTO_UV_DISABLE=1
 
-# Запускаем майнер в фоне и пишем логи в файл. 
-# ВНИМАНИЕ: Теперь имя воркера всегда "salad-rig" (вместо $HOSTNAME)
-./ffgv --pool stratum+ssl://vela.suprnova.cc:7604 \
-       --user vela1qhwm75w00j83qfyqvapgn84jv485gsyqtf4yw35.salad-rig \
-       --model sd-turbo-int.poisd \
-       --mode speed \
-       --lanes 1 \
-       --batch 8 > /root/miner.log 2>&1 &
-MINER_PID=$!
+RUN rm -f /etc/apt/sources.list.d/cuda.list /etc/apt/sources.list.d/nvidia-ml.list
+RUN apt-get update -o Acquire::Retries=5 && \
+    apt-get install -y --no-install-recommends wget ca-certificates
 
-# Ждем 60 секунд, чтобы майнер скачал модель и вышел на рабочую мощность
-sleep 60
+RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb && \
+    dpkg -i cuda-keyring_1.1-1_all.deb && \
+    rm cuda-keyring_1.1-1_all.deb
 
-# Переменная для подсчета ошибок подряд
-FAIL_COUNT=0
-MAX_FAILS=3 # 3 замера по 30 секунд = 90 секунд
+RUN apt-get update -o Acquire::Retries=5 && \
+    apt-get install -y --no-install-recommends \
+    python3 python3-pip libgl1 libglib2.0-0 && \
+    rm -rf /var/lib/apt/lists/*
 
-while true; do
-    sleep 30
-    
-    # Запускаем проверку
-    python3 /check_hashrate.py
-    RESULT=$?
-    
-    if [ $RESULT -ne 0 ]; then
-        # Если проверка не пройдена, увеличиваем счетчик
-        FAIL_COUNT=$((FAIL_COUNT + 1))
-        echo "WARNING: Плохие показатели. Страйк $FAIL_COUNT из $MAX_FAILS."
-        
-        if [ $FAIL_COUNT -ge $MAX_FAILS ]; then
-            echo "ALERT: Показатели плохие 90 секунд подряд! Убиваем контейнер для смены карты..."
-            kill -TERM $MINER_PID
-            exit 1
-        fi
-    else
-        # Если проверка пройдена, сбрасываем счетчик в ноль
-        if [ $FAIL_COUNT -ne 0 ]; then
-            echo "INFO: Показатели восстановились. Счетчик страйков сброшен."
-        fi
-        FAIL_COUNT=0
-    fi
-done
+WORKDIR /root
+# Скачиваем 0.4.6
+RUN wget https://github.com/pepsykolya/FreeForGemVela/releases/download/v0.4.6/ffgv-hive-0.4.6.tar.gz && \
+    tar -xvf ffgv-hive-0.4.6.tar.gz && \
+    cd ffgv-hive && chmod +x ffgv
+
+COPY entrypoint.sh /entrypoint.sh
+COPY check_hashrate.py /check_hashrate.py
+RUN sed -i 's/\r$//' /entrypoint.sh && \
+    sed -i 's/\r$//' /check_hashrate.py && \
+    chmod +x /entrypoint.sh
+
+USER root
+ENTRYPOINT ["/entrypoint.sh"]
