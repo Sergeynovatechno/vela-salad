@@ -3,14 +3,19 @@ import json
 import requests
 from datetime import datetime, timezone, timedelta
 
-# --- НАСТРОЙКИ ---
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 CHAT_ID = os.environ.get("CHAT_ID")
 WALLET = "vela1qhwm75w00j83qfyqvapgn84jv485gsyqtf4yw35"
 POOL_URL = "https://vela.suprnova.cc"
 HISTORY_FILE = "history.json"
-
 MINSK_TZ = timezone(timedelta(hours=3))
+
+def safe_float(value, default=0.0):
+    """Безопасно преобразует значение в float."""
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return default
 
 def send_telegram_message(text):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
@@ -19,35 +24,30 @@ def send_telegram_message(text):
 
 def get_stats():
     try:
-        # 1. Общая статистика пула и сети (Данные лежат внутри блока "pool")
         pool_resp = requests.get(f"{POOL_URL}/api/pools/vela", timeout=10).json()
         pool_block = pool_resp.get("pool", {})
         pool_stats = pool_block.get("poolStats", {})
         network_stats = pool_block.get("networkStats", {})
 
-        # 2. Статистика кошелька (Данные лежат в корне ответа)
         miner_resp = requests.get(f"{POOL_URL}/api/pools/vela/miners/{WALLET}", timeout=10).json()
-        
-        # Считаем суммарный хешрейт по всем воркерам
         total_hashrate = 0
         workers_data = miner_resp.get("performance", {}).get("workers", {})
         if workers_data:
-            total_hashrate = sum(w.get("hashrate", 0) for w in workers_data.values())
+            total_hashrate = sum(safe_float(w.get("hashrate", 0)) for w in workers_data.values())
 
-        # 3. Данные текущего раунда
         round_resp = requests.get(f"{POOL_URL}/api/pools/vela/miners/{WALLET}/round", timeout=10).json()
 
         return {
-            "my_hashrate": total_hashrate,
+            "my_hashrate": safe_float(total_hashrate),
             "my_workers": len(workers_data),
-            "my_balance": miner_resp.get("totalBalance", 0), 
-            "my_unconfirmed": miner_resp.get("unconfirmedBalance", 0),
-            "my_round_share": round_resp.get("share", 0),
-            "my_round_credit": round_resp.get("estimatedCredit", 0),
-            "pool_hashrate": pool_stats.get("poolHashrate", 0),
-            "pool_workers": pool_stats.get("connectedWorkers", 0),
-            "network_diff": float(network_stats.get("networkDifficulty", 0)) / 1_000_000,
-            "network_hashrate": network_stats.get("networkHashrate", 0),
+            "my_balance": safe_float(miner_resp.get("totalBalance", 0)),
+            "my_unconfirmed": safe_float(miner_resp.get("unconfirmedBalance", 0)),
+            "my_round_share": safe_float(round_resp.get("share", 0)),
+            "my_round_credit": safe_float(round_resp.get("estimatedCredit", 0)),
+            "pool_hashrate": safe_float(pool_stats.get("poolHashrate", 0)),
+            "pool_workers": int(safe_float(pool_stats.get("connectedWorkers", 0))),
+            "network_diff": safe_float(network_stats.get("networkDifficulty", 0)) / 1_000_000,
+            "network_hashrate": safe_float(network_stats.get("networkHashrate", 0)),
         }
     except Exception as e:
         print(f"Ошибка API: {e}")
@@ -58,15 +58,12 @@ def update_history(stats):
     if os.path.exists(HISTORY_FILE):
         with open(HISTORY_FILE, "r") as f:
             history = json.load(f)
-    
     now = datetime.now(MINSK_TZ)
     stats["timestamp"] = now.isoformat()
     stats["hour"] = now.hour
     stats["day"] = now.strftime("%A")
-    
     history.append(stats)
     history = history[-168:]
-    
     with open(HISTORY_FILE, "w") as f:
         json.dump(history, f, indent=4)
     return history
@@ -74,17 +71,14 @@ def update_history(stats):
 def analyze_best_hours(history):
     if len(history) < 24:
         return "📉 Пока недостаточно данных для анализа (нужно 24 часа)."
-    
     hourly_stats = {}
     for record in history:
         h = record["hour"]
         if h not in hourly_stats:
             hourly_stats[h] = []
         hourly_stats[h].append(record["network_diff"])
-    
     avg_hourly = {h: sum(diffs)/len(diffs) for h, diffs in hourly_stats.items()}
     best_hours = sorted(avg_hourly.items(), key=lambda x: x[1])[:3]
-    
     text = "🕒 *Лучшие часы для майнинга (по Минску):*\n"
     for hour, diff in best_hours:
         text += f"▪️ {hour:02d}:00 — средняя сложность {diff:.2f} M\n"
@@ -95,10 +89,9 @@ def main():
     if not stats:
         send_telegram_message("❌ Ошибка получения данных с пула.")
         return
-
     history = update_history(stats)
     diff = stats["network_diff"]
-    
+
     if diff < 3.0:
         status = "🟢 *ЗОЛОТОЕ ОКНО!* Сложность низкая, самое время майнить."
     elif diff > 4.5:
@@ -121,11 +114,9 @@ def main():
         f"Хешрейт сети: {stats['network_hashrate']:.0f} inf/s\n"
         f"Воркеров на пуле: {stats['pool_workers']}\n\n"
     )
-    
     now = datetime.now(MINSK_TZ)
     if now.hour == 0:
         message += analyze_best_hours(history)
-
     send_telegram_message(message)
     print("Сообщение отправлено!")
 
