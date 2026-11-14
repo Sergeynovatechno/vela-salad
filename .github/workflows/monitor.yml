@@ -2,14 +2,14 @@ name: Vela Pool Monitor
 
 on:
   schedule:
-    - cron: '0,30 * * * *' # Запуск каждые 30 минут (в 00 и 30 минут каждого часа)
-  workflow_dispatch: # Позволяет запустить вручную кнопкой
+    - cron: '*/30 * * * *' # Каждые 30 минут
+  workflow_dispatch:
 
 jobs:
   monitor:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Разрешение на сохранение файла history.json
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -35,5 +35,6 @@ jobs:
           git config --global user.name 'Vela Bot'
           git config --global user.email 'bot@vela.local'
           git add history.json
-          git commit -m "Update history [skip ci]" || exit 0
+          # Коммитим, даже если нет изменений, чтобы GitHub видел активность
+          git commit -m "Update history [skip ci]" --allow-empty 
           git push
