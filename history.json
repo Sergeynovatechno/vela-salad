@@ -595,5 +595,20 @@
         "timestamp": "2026-11-24T09:35:13.288325+03:00",
         "hour": 9,
         "day": "Tuesday"
+    },
+    {
+        "my_hashrate": 0.0,
+        "my_workers": 0,
+        "my_balance": 410.5748100748,
+        "my_unconfirmed": 0.0,
+        "my_round_share": 0.0,
+        "my_round_credit": 0.0,
+        "pool_hashrate": 3803.87264151,
+        "pool_workers": 39,
+        "network_diff": 3.259048,
+        "network_hashrate": 11195.7372012,
+        "timestamp": "2026-11-24T21:27:50.650083+03:00",
+        "hour": 21,
+        "day": "Tuesday"
     }
 ]
